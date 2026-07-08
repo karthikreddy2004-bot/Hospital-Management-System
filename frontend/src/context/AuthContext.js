@@ -1,0 +1,71 @@
+import { createContext, useContext, useState } from "react";
+import { login as loginApi } from "../api/authApi";
+
+const AuthContext = createContext(null);
+
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(() => {
+    const stored = localStorage.getItem("user");
+    return stored ? JSON.parse(stored) : null;
+  });
+
+  const login = async (username, password) => {
+    const response = await loginApi(username, password);
+
+    const {
+      token,
+      id,
+      username: uname,
+      email,
+      role,
+    } = response.data;
+
+    localStorage.setItem("token", token);
+
+    const userData = {
+      id,
+      username: uname,
+      email,
+      role,
+    };
+
+    localStorage.setItem("user", JSON.stringify(userData));
+    setUser(userData);
+
+    return userData;
+  };
+
+  const logout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser(null);
+  };
+
+  const isAuthenticated =
+    !!user && !!localStorage.getItem("token");
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        logout,
+        isAuthenticated,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+
+  if (!context) {
+    throw new Error(
+      "useAuth must be used within AuthProvider"
+    );
+  }
+
+  return context;
+};
